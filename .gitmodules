@@ -1,0 +1,3 @@
+[submodule "modules/archipelago_wow"]
+	path = modules/archipelago_wow
+	url = https://github.com/bobthe13th/archipelago-wow-module.git
