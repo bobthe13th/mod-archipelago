@@ -9,5 +9,5 @@ CREATE TABLE IF NOT EXISTS `archipelago_checks` (
 DELETE FROM `archipelago_checks` WHERE 1=1;
 
 ALTER TABLE `archipelago_realm_state`
-  ADD COLUMN IF NOT EXISTS `goal_complete` TINYINT UNSIGNED NOT NULL DEFAULT 0;
+  ADD COLUMN `goal_complete` TINYINT UNSIGNED NOT NULL DEFAULT 0;
 UPDATE `archipelago_realm_state` SET `goal_complete` = 0 WHERE `id` = 1;

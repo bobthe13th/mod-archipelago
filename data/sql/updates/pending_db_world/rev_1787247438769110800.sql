@@ -30,8 +30,8 @@ DELETE FROM `creature_template_model` WHERE `CreatureID` = 900000;
 INSERT INTO `creature_template_model` (`CreatureID`, `Idx`, `CreatureDisplayID`, `DisplayScale`, `Probability`)
 VALUES (900000, 0, 1859, 1, 1);
 
-DELETE FROM `creature` WHERE `id1` = 900000;
+DELETE FROM `creature` WHERE `id` = 900000;
 INSERT INTO `creature`
-    (`id1`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `curhealth`, `curmana`, `MovementType`)
+    (`id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `curhealth`, `curmana`, `MovementType`)
 VALUES
     (900000, 0, 0, 0, 1, 1, -8905.4, -159.9, 82.02, 2.04204, 300, 1, 0, 0);
