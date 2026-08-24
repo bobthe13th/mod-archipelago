@@ -1,0 +1,16 @@
+-- Gate Northrend-bound transports behind the Archipelago Northrend Passage
+-- item. Entries verified live against acore_world's gameobject_template and
+-- transports tables during implementation (Task 8 Step 1):
+--   181688 Ship, Icebreaker (Northspear)          - Menethil Harbor, Wetlands <-> Valgarde, Howling Fjord
+--   181689 Zeppelin, Horde (Cloudkisser)          - Undercity, Tirisfal Glades <-> Vengeance Landing, Howling Fjord
+--   186238 Zeppelin, Horde (The Mighty Wind)      - Orgrimmar, Durotar <-> Warsong Hold, Borean Tundra
+--   190536 Ship, Icebreaker (Stormwind's Pride / "The Kraken") - Stormwind Harbor <-> Valiance Keep, Borean Tundra
+-- All four had an empty `ScriptName` prior to this migration (confirmed via
+-- SELECT), so this does not overwrite any existing gameplay logic. Other
+-- zeppelins/ships matching the broad name search (The Thundercaller, The
+-- Iron Eagle, The Purple Princess, the Westguard Keep zeppelin, the various
+-- Icecrown Citadel raid transports "Orgrim's Hammer"/"The Skybreaker") were
+-- excluded because they do not cross between the old world and Northrend
+-- (they are purely Kalimdor/Eastern Kingdoms routes, a Northrend-internal
+-- route, or Northrend raid-instance-only transports respectively).
+UPDATE `gameobject_template` SET `ScriptName` = 'go_archipelago_northrend_passage' WHERE `entry` IN (181688, 181689, 186238, 190536);
