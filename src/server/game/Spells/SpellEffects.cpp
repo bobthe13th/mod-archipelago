@@ -4365,6 +4365,18 @@ void Spell::EffectApplyGlyph(SpellEffIndex effIndex)
         return;
     }
 
+    // Archipelago WoW Randomizer (M4.9.5 final review fix): a slot suppressed
+    // by ArchipelagoShouldSuppressGlyphSlot is left un-initialized by
+    // Player::InitGlyphsForLevel (GetGlyphSlot returns 0 for it), whereas
+    // every real GlyphSlot.dbc row is unconditionally initialized when the
+    // module is absent/disabled or the slot isn't gated -- so this check
+    // cannot misfire against normal vanilla play.
+    if (!player->GetGlyphSlot(m_glyphIndex))
+    {
+        SendCastResult(SPELL_FAILED_GLYPH_SOCKET_LOCKED);
+        return;
+    }
+
     // apply new one
     if (uint32 glyph = m_spellInfo->Effects[effIndex].MiscValue)
     {

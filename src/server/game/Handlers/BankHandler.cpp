@@ -67,12 +67,6 @@ void WorldSession::HandleBankerActivateOpcode(WorldPacket& recvData)
         return;
     }
 
-    if (ArchipelagoShouldSuppressBankAccess && ArchipelagoShouldSuppressBankAccess())
-    {
-        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage("Archipelago: You need Bank Access to use this.");
-        return;
-    }
-
     // remove fake death
     if (GetPlayer()->HasUnitState(UNIT_STATE_DIED))
         GetPlayer()->RemoveAurasByType(SPELL_AURA_FEIGN_DEATH);
@@ -204,6 +198,18 @@ void WorldSession::HandleBuyBankSlotOpcode(WorldPackets::Bank::BuyBankSlot& buyB
 
 void WorldSession::SendShowBank(ObjectGuid guid)
 {
+    // Archipelago WoW Randomizer (M4.9.5 final review fix): this is the true
+    // single choke point all three real SendShowBank callers funnel through
+    // (HandleBankerActivateOpcode below, PlayerGossip.cpp's gossip-menu bank
+    // option, and pet_generic.cpp's stable-master bank option), so the bank
+    // access suppression guard lives here rather than duplicated in each
+    // caller.
+    if (ArchipelagoShouldSuppressBankAccess && ArchipelagoShouldSuppressBankAccess())
+    {
+        ChatHandler(this).PSendSysMessage("Archipelago: You need Bank Access to use this.");
+        return;
+    }
+
     m_currentBankerGUID = guid;
     WorldPackets::Bank::ShowBank packet;
     packet.Banker = guid;
