@@ -13593,12 +13593,21 @@ uint32 Player::GetBarberShopCost(uint8 newhairstyle, uint8 newhaircolor, uint8 n
     return uint32(cost);
 }
 
+// Archipelago WoW Randomizer weak hook point (M4.9) -- same shape/rationale
+// as BankHandler.cpp's ArchipelagoShouldSuppressBankAccess (see that file's
+// comment). Takes the GlyphSlot.dbc row's own 1-based Order value (the same
+// value InitGlyphsForLevel already resolves each SetGlyphSlot call from
+// below) so the module can compare it against its own granted "glyph_slots"
+// flag tier without core needing to know anything about that flag itself.
+bool (*ArchipelagoShouldSuppressGlyphSlot)(uint32 order) = nullptr;
+
 void Player::InitGlyphsForLevel()
 {
     for (uint32 i = 0; i < sGlyphSlotStore.GetNumRows(); ++i)
         if (GlyphSlotEntry const* gs = sGlyphSlotStore.LookupEntry(i))
             if (gs->Order)
-                SetGlyphSlot(gs->Order - 1, gs->Id);
+                if (!ArchipelagoShouldSuppressGlyphSlot || !ArchipelagoShouldSuppressGlyphSlot(gs->Order))
+                    SetGlyphSlot(gs->Order - 1, gs->Id);
 
     uint8 level = GetLevel();
     uint32 value = 0;
