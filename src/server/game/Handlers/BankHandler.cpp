@@ -16,12 +16,25 @@
  */
 
 #include "BankPackets.h"
+#include "Chat.h"
 #include "DBCStores.h"
 #include "Item.h"
 #include "Log.h"
 #include "Player.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+
+// Archipelago WoW Randomizer weak hook point (M4.9). Optional module --
+// modules/archipelago_wow/src/APGating.cpp sets this at script-load time
+// (AddArchipelagoGatingScripts()) if the module is present, leaves it
+// nullptr otherwise. Declared directly here, not via any module #include,
+// so this core file's only extra compile-time surface is this one bare
+// function-pointer symbol -- worldserver still builds cleanly with
+// -DDISABLED_AC_MODULES="archipelago_wow" (this project's existing
+// "module absent = full vanilla behavior" contract, extended for the
+// first time to a hook living in core src rather than entirely inside
+// the module -- see the M4.9 plan's Global Constraints).
+bool (*ArchipelagoShouldSuppressBankAccess)() = nullptr;
 
 bool WorldSession::CanUseBank(ObjectGuid bankerGUID) const
 {
@@ -51,6 +64,12 @@ void WorldSession::HandleBankerActivateOpcode(WorldPacket& recvData)
     if (!unit)
     {
         LOG_DEBUG("network", "WORLD: HandleBankerActivateOpcode - Unit ({}) not found or you can not interact with him.", guid.ToString());
+        return;
+    }
+
+    if (ArchipelagoShouldSuppressBankAccess && ArchipelagoShouldSuppressBankAccess())
+    {
+        ChatHandler(GetPlayer()->GetSession()).PSendSysMessage("Archipelago: You need Bank Access to use this.");
         return;
     }
 
