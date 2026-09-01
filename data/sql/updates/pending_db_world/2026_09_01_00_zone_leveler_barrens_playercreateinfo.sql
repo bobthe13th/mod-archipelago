@@ -35,14 +35,15 @@
 -- decodes to "The Barrens". (The same pass caught and fixed a real,
 -- unrelated bug: Archipelago/worlds/wow/zone_level_data.py's
 -- ZONE_ID_MOLTEN_CORE placeholder of 409 does NOT decode to "Molten Core"
--- in this checkout's AreaTable.dbc -- area id 409 is Molten Core's real
--- `ParentAreaID` (Blackrock Mountain), not Molten Core's own id. The real
--- Molten Core area id, found by searching the DBC's string block for the
--- exact string "Molten Core", is 2717 -- corrected in that file separately
--- from this SQL migration.)
+-- in this checkout's AreaTable.dbc -- 409 turned out to be an unrelated
+-- AreaTable area id (its own name field decodes to "Island of Doctor
+-- Lapidis", nothing to do with Molten Core), confirmed via direct DBC
+-- decode. The real Molten Core area id, found by searching the DBC's
+-- string block for the exact string "Molten Core", is 2717 -- corrected in
+-- that file separately from this SQL migration.)
 --
 -- Target position (-410.0, -2643.0) is a small, deliberate offset a few
--- yards northwest of the innkeeper's own exact spawn point, matching this
+-- yards southwest of the innkeeper's own exact spawn point, matching this
 -- project's own "don't overlap an existing NPC exactly" convention (see
 -- 2026_08_29_01_archipelago_wow_holiday_herald.sql's per-capital landmark
 -- offsets). `position_z`/`orientation` are kept at the innkeeper's own
