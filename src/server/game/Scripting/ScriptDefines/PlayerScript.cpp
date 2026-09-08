@@ -702,6 +702,11 @@ bool ScriptMgr::OnPlayerCanUseItem(Player* player, ItemTemplate const* proto, In
     CALL_ENABLED_BOOLEAN_HOOKS(PlayerScript, PLAYERHOOK_CAN_USE_ITEM, !script->OnPlayerCanUseItem(player, proto, result));
 }
 
+bool ScriptMgr::OnPlayerCanTrainerTeachSpell(Player* player, uint32 spellId)
+{
+    CALL_ENABLED_BOOLEAN_HOOKS(PlayerScript, PLAYERHOOK_CAN_TRAINER_TEACH_SPELL, !script->OnPlayerCanTrainerTeachSpell(player, spellId));
+}
+
 bool ScriptMgr::OnPlayerCanSaveEquipNewItem(Player* player, Item* item, uint16 pos, bool update)
 {
     CALL_ENABLED_BOOLEAN_HOOKS(PlayerScript, PLAYERHOOK_CAN_SAVE_EQUIP_NEW_ITEM, !script->OnPlayerCanSaveEquipNewItem(player, item, pos, update));
