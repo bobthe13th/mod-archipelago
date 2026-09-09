@@ -19,6 +19,7 @@
 #include "Creature.h"
 #include "NPCPackets.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 
@@ -100,6 +101,12 @@ namespace Trainer
         if (!player->HasEnoughMoney(moneyCost))
         {
             SendTeachFailure(npc, player, spellId, FailReason::NotEnoughMoney);
+            return;
+        }
+
+        if (!sScriptMgr->OnPlayerCanTrainerTeachSpell(player, spellId))
+        {
+            SendTeachFailure(npc, player, spellId, FailReason::Unavailable);
             return;
         }
 

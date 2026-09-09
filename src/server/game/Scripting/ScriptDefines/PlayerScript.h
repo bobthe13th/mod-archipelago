@@ -161,6 +161,7 @@ enum PlayerHook
     PLAYERHOOK_CAN_EQUIP_ITEM,
     PLAYERHOOK_CAN_UNEQUIP_ITEM,
     PLAYERHOOK_CAN_USE_ITEM,
+    PLAYERHOOK_CAN_TRAINER_TEACH_SPELL,
     PLAYERHOOK_CAN_SAVE_EQUIP_NEW_ITEM,
     PLAYERHOOK_CAN_APPLY_ENCHANTMENT,
     PLAYERHOOK_PASSED_QUEST_KILLED_MONSTER_CREDIT,
@@ -584,6 +585,8 @@ public:
     [[nodiscard]] virtual bool OnPlayerCanUnequipItem(Player* /*player*/, uint16 /*pos*/, bool /*swap*/) { return true; }
 
     [[nodiscard]] virtual bool OnPlayerCanUseItem(Player* /*player*/, ItemTemplate const* /*proto*/, InventoryResult& /*result*/) { return true; }
+
+    [[nodiscard]] virtual bool OnPlayerCanTrainerTeachSpell(Player* /*player*/, uint32 /*spellId*/) { return true; }
 
     [[nodiscard]] virtual bool OnPlayerCanSaveEquipNewItem(Player* /*player*/, Item* /*item*/, uint16 /*pos*/, bool /*update*/) { return true; }
 
