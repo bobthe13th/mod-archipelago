@@ -62,3 +62,6 @@ VALUES
      0, 1, 1, 0, 5735, 0,
      0, -1, 0, -1, 1,
      'Summons a portable mailbox at your location for 5 minutes. Delivered by the Archipelago multiworld.', -1, 12340);
+
+DELETE FROM `spell_script_names` WHERE `spell_id` = 5735 AND `ScriptName` = 'spell_archipelago_portable_mailbox';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES (5735, 'spell_archipelago_portable_mailbox');
