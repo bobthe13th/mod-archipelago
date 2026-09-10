@@ -13607,14 +13607,14 @@ uint32 Player::GetBarberShopCost(uint8 newhairstyle, uint8 newhaircolor, uint8 n
 // value InitGlyphsForLevel already resolves each SetGlyphSlot call from
 // below) so the module can compare it against its own granted "glyph_slots"
 // flag tier without core needing to know anything about that flag itself.
-bool (*ArchipelagoShouldSuppressGlyphSlot)(uint32 order) = nullptr;
+bool (*ArchipelagoShouldSuppressGlyphSlot)(uint32 order, Player* player) = nullptr;
 
 void Player::InitGlyphsForLevel()
 {
     for (uint32 i = 0; i < sGlyphSlotStore.GetNumRows(); ++i)
         if (GlyphSlotEntry const* gs = sGlyphSlotStore.LookupEntry(i))
             if (gs->Order)
-                if (!ArchipelagoShouldSuppressGlyphSlot || !ArchipelagoShouldSuppressGlyphSlot(gs->Order))
+                if (!ArchipelagoShouldSuppressGlyphSlot || !ArchipelagoShouldSuppressGlyphSlot(gs->Order, this))
                     SetGlyphSlot(gs->Order - 1, gs->Id);
 
     uint8 level = GetLevel();

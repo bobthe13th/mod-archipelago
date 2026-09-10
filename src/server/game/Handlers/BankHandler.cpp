@@ -34,7 +34,7 @@
 // "module absent = full vanilla behavior" contract, extended for the
 // first time to a hook living in core src rather than entirely inside
 // the module -- see the M4.9 plan's Global Constraints).
-bool (*ArchipelagoShouldSuppressBankAccess)() = nullptr;
+bool (*ArchipelagoShouldSuppressBankAccess)(Player* player) = nullptr;
 
 bool WorldSession::CanUseBank(ObjectGuid bankerGUID) const
 {
@@ -204,7 +204,7 @@ void WorldSession::SendShowBank(ObjectGuid guid)
     // option, and pet_generic.cpp's stable-master bank option), so the bank
     // access suppression guard lives here rather than duplicated in each
     // caller.
-    if (ArchipelagoShouldSuppressBankAccess && ArchipelagoShouldSuppressBankAccess())
+    if (ArchipelagoShouldSuppressBankAccess && ArchipelagoShouldSuppressBankAccess(GetPlayer()))
     {
         ChatHandler(this).PSendSysMessage("Archipelago: You need Bank Access to use this.");
         return;
