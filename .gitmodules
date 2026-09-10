@@ -1,3 +1,6 @@
 [submodule "modules/archipelago_wow"]
 	path = modules/archipelago_wow
 	url = https://github.com/bobthe13th/archipelago-wow-module.git
+[submodule "modules/mod-playerbots"]
+	path = modules/mod-playerbots
+	url = https://github.com/mod-playerbots/mod-playerbots.git
