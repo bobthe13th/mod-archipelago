@@ -309,6 +309,13 @@ struct npc_supervisor_raelen : public ScriptedAI
                     {
                         tempGUIDs.push_back(peasent->GetGUID());
                     }
+
+                    if (tempGUIDs.size() < 5)
+                    {
+                        _events.ScheduleEvent(EVENT_FIND_PEASENTS, 4s);
+                        break;
+                    }
+
                     peasentGUIDs.push_back(tempGUIDs[2]);
                     peasentGUIDs.push_back(tempGUIDs[3]);
                     peasentGUIDs.push_back(tempGUIDs[0]);
