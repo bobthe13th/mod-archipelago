@@ -75,6 +75,8 @@ namespace Trainer
             std::copy(trainerSpell.ReqAbility.begin(), trainerSpell.ReqAbility.end(), trainerListSpell.ReqAbility.begin());
         }
 
+        sScriptMgr->OnPlayerBeforeReceiveSpellListFromTrainer(player, npc, trainerList);
+
         player->SendDirectMessage(trainerList.Write());
     }
 
@@ -122,6 +124,8 @@ namespace Trainer
             player->learnSpell(trainerSpell->SpellId, false);
 
         SendTeachSucceeded(npc, player, spellId);
+
+        sScriptMgr->OnPlayerAfterTrainSpell(player, npc, spellId);
     }
 
     Spell const* Trainer::GetSpell(uint32 spellId) const
@@ -159,6 +163,13 @@ namespace Trainer
     }
 
     SpellState Trainer::GetSpellState(Player const* player, Spell const* trainerSpell) const
+    {
+        SpellState state = GetDefaultSpellState(player, trainerSpell);
+        sScriptMgr->OnPlayerGetTrainerSpellState(player, _trainerId, trainerSpell->SpellId, state);
+        return state;
+    }
+
+    SpellState Trainer::GetDefaultSpellState(Player const* player, Spell const* trainerSpell) const
     {
         if (player->HasSpell(trainerSpell->SpellId))
             return SpellState::Known;
