@@ -205,6 +205,11 @@ int main(int argc, char** argv)
             LOG_INFO("server.worldserver", "> Using Boost version:           {}.{}.{}", BOOST_VERSION / 100000, BOOST_VERSION / 100 % 1000, BOOST_VERSION % 100);
         });
 
+    // Cluster.Enabled is known from config here. Fail before DB/network if the
+    // loaded libsidecar is the stub or does not match the headers we built with.
+    if (!sToCloud9Sidecar->CheckLibsidecarAbi())
+        return 1;
+
     OpenSSLCrypto::threadsSetup();
 
     std::shared_ptr<void> opensslHandle(nullptr, [](void*) { OpenSSLCrypto::threadsCleanup(); });
@@ -441,6 +446,11 @@ bool StartDB()
     if (!loader.Load())
         return false;
 
+    if (!sScriptMgr->OnDatabasesLoading())
+    {
+        return false;
+    }
+
     ///- Get the realm Id from the configuration file
     realm.Id.Realm = sConfigMgr->GetOption<uint32>("RealmID", 1);
     if (!realm.Id.Realm)
@@ -488,6 +498,8 @@ void StopDB()
     CharacterDatabase.Close();
     WorldDatabase.Close();
     LoginDatabase.Close();
+
+    sScriptMgr->OnDatabasesClosing();
 
     MySQL::Library_End();
 }
@@ -579,6 +591,8 @@ void WorldUpdateLoop()
     CharacterDatabase.WarnAboutSyncQueries(true);
     WorldDatabase.WarnAboutSyncQueries(true);
 
+    sScriptMgr->OnDatabaseWarnAboutSyncQueries(true);
+
     ///- While we have not World::m_stopEvent, update the world
     while (!World::IsStopped())
     {
@@ -607,6 +621,8 @@ void WorldUpdateLoop()
             Sleep(1000);
 #endif
     }
+
+    sScriptMgr->OnDatabaseWarnAboutSyncQueries(false);
 
     LoginDatabase.WarnAboutSyncQueries(false);
     CharacterDatabase.WarnAboutSyncQueries(false);
