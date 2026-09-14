@@ -11766,6 +11766,15 @@ void Player::SetGroup(Group* group, int8 subgroup)
     UpdateObjectVisibility(false);
 }
 
+// Archipelago WoW Randomizer weak hook point (M5.6.1) -- same shape/
+// rationale as ArchipelagoShouldSuppressGlyphSlot (see this file's own
+// later comment for that one) and ArchipelagoShouldSuppressBankAccess
+// (BankHandler.cpp). Out-params: on true, outSpeed/outGameTime replace
+// the vanilla hardcoded game-speed float and live packed timestamp this
+// function would otherwise send. false (or a null pointer, meaning the
+// module isn't loaded) means "send stock vanilla values, untouched."
+bool (*ArchipelagoResolveDayNight)(float& outSpeed, time_t& outGameTime) = nullptr;
+
 void Player::SendInitialPacketsBeforeAddToMap()
 {
     /// Pass 'this' as argument because we're not stored in ObjectAccessor yet
@@ -11802,9 +11811,20 @@ void Player::SendInitialPacketsBeforeAddToMap()
 
     SendEquipmentSetList();
 
+    // Archipelago WoW Randomizer (M5.6.1): ArchipelagoResolveDayNight
+    // overrides these two vanilla constants when a day/night mutation
+    // is active for this seed. Called from SendInitialPacketsBeforeAddToMap,
+    // which fires on login AND on every teleport/map-change completion
+    // (MovementHandler.cpp's world-port-ack handler) -- one patch site
+    // covers both cases.
+    float gameSpeed = 0.01666667f;
+    time_t packedGameTime = GameTime::GetGameTime().count();
+    if (ArchipelagoResolveDayNight)
+        ArchipelagoResolveDayNight(gameSpeed, packedGameTime);
+
     data.Initialize(SMSG_LOGIN_SETTIMESPEED, 4 + 4 + 4);
-    data.AppendPackedTime(GameTime::GetGameTime().count());
-    data << float(0.01666667f);                             // game speed
+    data.AppendPackedTime(packedGameTime);
+    data << float(gameSpeed);                               // game speed
     data << uint32(0);                                      // added in 3.1.2
     SendDirectMessage(&data);
 
