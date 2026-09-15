@@ -915,6 +915,31 @@ bool Player::IsTotemCategoryCompatiableWith(ItemTemplate const* pProto, uint32 r
     return true;
 }
 
+InventoryResult Player::BotCanUseItem(ItemTemplate const* proto) const
+{
+    if (proto->Class == ITEM_CLASS_ARMOR && proto->SubClass == ITEM_SUBCLASS_ARMOR_IDOL && !IsClass(CLASS_DRUID, CLASS_CONTEXT_EQUIP_RELIC))
+    {
+        return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+    }
+
+    if (proto->Class == ITEM_CLASS_ARMOR && proto->SubClass == ITEM_SUBCLASS_ARMOR_TOTEM && !IsClass(CLASS_SHAMAN, CLASS_CONTEXT_EQUIP_RELIC))
+    {
+        return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+    }
+
+    if (proto->Class == ITEM_CLASS_ARMOR && proto->SubClass == ITEM_SUBCLASS_ARMOR_LIBRAM && !IsClass(CLASS_PALADIN, CLASS_CONTEXT_EQUIP_RELIC))
+    {
+        return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+    }
+
+    if (proto->Class == ITEM_CLASS_ARMOR && proto->SubClass == ITEM_SUBCLASS_ARMOR_SIGIL && !IsClass(CLASS_DEATH_KNIGHT, CLASS_CONTEXT_EQUIP_RELIC))
+    {
+        return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+    }
+
+    return CanUseItem(proto);
+}
+
 InventoryResult Player::CanStoreItem_InSpecificSlot(uint8 bag, uint8 slot, ItemPosCountVec& dest, ItemTemplate const* pProto, uint32& count, bool swap, Item* pSrcItem) const
 {
     Item* pItem2 = GetItemByPos(bag, slot);
@@ -2374,6 +2399,35 @@ InventoryResult Player::CanUseItem(ItemTemplate const* proto) const
         return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
     }
 
+    if (proto->InventoryType == INVTYPE_RELIC)
+    {
+        switch (proto->SubClass)
+        {
+            case ITEM_SUBCLASS_ARMOR_LIBRAM:
+                if (!IsClass(CLASS_PALADIN, CLASS_CONTEXT_EQUIP_RELIC))
+                    return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+                break;
+            case ITEM_SUBCLASS_ARMOR_IDOL:
+                if (!IsClass(CLASS_DRUID, CLASS_CONTEXT_EQUIP_RELIC))
+                    return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+                break;
+            case ITEM_SUBCLASS_ARMOR_TOTEM:
+                if (!IsClass(CLASS_SHAMAN, CLASS_CONTEXT_EQUIP_RELIC))
+                    return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+                break;
+            case ITEM_SUBCLASS_ARMOR_MISC:
+                if (!IsClass(CLASS_WARLOCK, CLASS_CONTEXT_EQUIP_RELIC))
+                    return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+                break;
+            case ITEM_SUBCLASS_ARMOR_SIGIL:
+                if (!IsClass(CLASS_DEATH_KNIGHT, CLASS_CONTEXT_EQUIP_RELIC))
+                    return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
+                break;
+            default:
+                break;
+        }
+    }
+
     if (proto->RequiredSkill != 0)
     {
         if (GetSkillValue(proto->RequiredSkill) == 0)
@@ -2633,6 +2687,13 @@ Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update
         }
 
         pItem = StoreItem(dest, pItem, update);
+        // M4.11.5.0.7 (module: archipelago_wow): OnPlayerStoreNewItem used
+        // to be called here directly; moved down into StoreItem itself
+        // (called immediately above) so it also observes mail-retrieval and
+        // trade-acceptance, which never reach this function at all. Removing
+        // it here (rather than leaving both) avoids a double-fire for every
+        // ordinary StoreNewItem-based acquisition -- StoreItem is always
+        // reached from here on the very line above.
 
         if (allowedLooters.size() > 1 && pItem->GetTemplate()->GetMaxStackSize() == 1 && pItem->IsSoulBound() && sWorld->getBoolConfig(CONFIG_SET_BOP_ITEM_TRADEABLE))
         {
@@ -2652,8 +2713,6 @@ Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update
             stmt->SetData(1, ss.str());
             CharacterDatabase.Execute(stmt);
         }
-
-        sScriptMgr->OnPlayerStoreNewItem(this, pItem, count);
     }
     return pItem;
 }
@@ -2664,10 +2723,12 @@ Item* Player::StoreItem(ItemPosCountVec const& dest, Item* pItem, bool update)
         return nullptr;
 
     Item* lastItem = pItem;
+    uint32 totalCount = 0;
     for (ItemPosCountVec::const_iterator itr = dest.begin(); itr != dest.end();)
     {
         uint16 pos = itr->pos;
         uint32 count = itr->count;
+        totalCount += count;
 
         ++itr;
 
@@ -2679,6 +2740,20 @@ Item* Player::StoreItem(ItemPosCountVec const& dest, Item* pItem, bool update)
 
         lastItem = _StoreItem(pos, pItem, count, true, update);
     }
+
+    // M4.11.5.0.7 (module: archipelago_wow): consolidated here from
+    // StoreNewItem (see that function's own comment above) -- this is the
+    // one real function every path that puts an item into a player's bags
+    // funnels through, confirmed live: StoreNewItem calls this above,
+    // Player::MoveItemToInventory calls this too (mail-attachment
+    // retrieval's HandleMailTakeItem path, and every trade-acceptance path,
+    // both go through MoveItemToInventory), MailHandler.cpp's
+    // HandleMailCreateTextItem calls this directly. Placed here rather than
+    // left only in StoreNewItem so the module's Itemsanity "first held"
+    // detection observes every one of these paths, not just brand-new-item
+    // creation.
+    if (lastItem)
+        sScriptMgr->OnPlayerStoreNewItem(this, lastItem, totalCount);
 
     return lastItem;
 }
@@ -3071,7 +3146,7 @@ void Player::MoveItemFromInventory(uint8 bag, uint8 slot, bool update)
 }
 
 // Common operation need to add item from inventory without delete in trade, guild bank, mail....
-void Player::MoveItemToInventory(ItemPosCountVec const& dest, Item* pItem, bool update, bool in_characterInventoryDB)
+Item* Player::MoveItemToInventory(ItemPosCountVec const& dest, Item* pItem, bool update, bool in_characterInventoryDB)
 {
     // update quest counters
     ItemAddedQuestCheck(pItem->GetEntry(), pItem->GetCount());
@@ -3094,6 +3169,10 @@ void Player::MoveItemToInventory(ItemPosCountVec const& dest, Item* pItem, bool 
         if (pLastItem->IsBOPTradable())
             AddTradeableItem(pLastItem);
     }
+
+    sScriptMgr->OnPlayerAfterMoveItemToInventory(this, pLastItem, update);
+
+    return pLastItem;
 }
 
 void Player::DestroyItem(uint8 bag, uint8 slot, bool update)

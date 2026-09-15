@@ -24,6 +24,13 @@ macro(fetch_googletest _download_module_path _download_root)
             ${_download_root}
     )
 
+    # Prevent from forcing MSVC to use the static runtime for gtest/gmock --
+    # this project's own targets link against the dynamic runtime (/MD), and
+    # a mismatch is a link-time LNK2038 (RuntimeLibrary conflict), not a
+    # compile error, so it only surfaces once someone actually links against
+    # these libs (e.g. enabling BUILD_TESTING for the first time).
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
     # adds the targers: gtest, gtest_main, gmock, gmock_main
     add_subdirectory(
             ${_download_root}/googletest-src

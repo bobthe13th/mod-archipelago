@@ -3411,6 +3411,9 @@ bool Player::IsNeedCastPassiveSpellAtLearn(SpellInfo const* spellInfo) const
 
 void Player::learnSpell(uint32 spellId, bool temporary /*= false*/, bool learnFromSkill /*= false*/)
 {
+    if (!sScriptMgr->OnPlayerCanLearnSpell(this, spellId))
+        return;
+
     // Xinef: don't allow to learn active spell once more
     if (HasActiveSpell(spellId))
     {
@@ -5084,6 +5087,15 @@ void Player::CleanupChannels()
         m_channels.erase(m_channels.begin());               // remove from player's channel list
         ch->LeaveChannel(this, false);                     // not send to client, not remove from player's channel list
     }
+}
+
+// Playerbot helper if bot talks in a different locale
+bool Player::IsInChannel(const Channel* c)
+{
+    return std::any_of(m_channels.begin(), m_channels.end(), [c](const Channel* chan)
+    {
+        return c->GetChannelId() == chan->GetChannelId();
+    });
 }
 
 void Player::ClearChannelWatch()
@@ -10691,7 +10703,8 @@ void Player::SendTaxiNodeStatusMultiple()
     DoForAllVisibleWorldObjects([this](WorldObject* worldObject)
     {
         Creature* creature = worldObject->ToCreature();
-        if (!creature || creature->IsHostileTo(this))
+        // reaction must be checked both ways: the Dark Portal flight masters are neutral toward opposite-faction players, while players are hostile toward them
+        if (!creature || creature->GetReactionTo(this) <= REP_UNFRIENDLY || IsHostileTo(creature))
             return;
 
         if (!creature->HasNpcFlag(UNIT_NPC_FLAG_FLIGHTMASTER))
@@ -11753,6 +11766,15 @@ void Player::SetGroup(Group* group, int8 subgroup)
     UpdateObjectVisibility(false);
 }
 
+// Archipelago WoW Randomizer weak hook point (M5.6.1) -- same shape/
+// rationale as ArchipelagoShouldSuppressGlyphSlot (see this file's own
+// later comment for that one) and ArchipelagoShouldSuppressBankAccess
+// (BankHandler.cpp). Out-params: on true, outSpeed/outGameTime replace
+// the vanilla hardcoded game-speed float and live packed timestamp this
+// function would otherwise send. false (or a null pointer, meaning the
+// module isn't loaded) means "send stock vanilla values, untouched."
+bool (*ArchipelagoResolveDayNight)(float& outSpeed, time_t& outGameTime) = nullptr;
+
 void Player::SendInitialPacketsBeforeAddToMap()
 {
     /// Pass 'this' as argument because we're not stored in ObjectAccessor yet
@@ -11789,9 +11811,20 @@ void Player::SendInitialPacketsBeforeAddToMap()
 
     SendEquipmentSetList();
 
+    // Archipelago WoW Randomizer (M5.6.1): ArchipelagoResolveDayNight
+    // overrides these two vanilla constants when a day/night mutation
+    // is active for this seed. Called from SendInitialPacketsBeforeAddToMap,
+    // which fires on login AND on every teleport/map-change completion
+    // (MovementHandler.cpp's world-port-ack handler) -- one patch site
+    // covers both cases.
+    float gameSpeed = 0.01666667f;
+    time_t packedGameTime = GameTime::GetGameTime().count();
+    if (ArchipelagoResolveDayNight)
+        ArchipelagoResolveDayNight(gameSpeed, packedGameTime);
+
     data.Initialize(SMSG_LOGIN_SETTIMESPEED, 4 + 4 + 4);
-    data.AppendPackedTime(GameTime::GetGameTime().count());
-    data << float(0.01666667f);                             // game speed
+    data.AppendPackedTime(packedGameTime);
+    data << float(gameSpeed);                               // game speed
     data << uint32(0);                                      // added in 3.1.2
     SendDirectMessage(&data);
 
@@ -13147,13 +13180,11 @@ void Player::SetClientControl(Unit* target, bool allowMove, bool packetOnly /*= 
         return;
     }
 
-    // still affected by some aura that shouldn't allow control, only allow on last such aura to be removed
-    if (target->HasUnitState(UNIT_STATE_FLEEING | UNIT_STATE_CONFUSED))
-        allowMove = false;
-
+    // A fleeing/confused target can't be controlled by the client yet, but the mover
+    // must still switch so control is restored once the crowd control ends.
     WorldPacket data(SMSG_CLIENT_CONTROL_UPDATE, target->GetPackGUID().size() + 1);
     data << target->GetPackGUID();
-    data << uint8(allowMove ? 1 : 0);
+    data << uint8((allowMove && !target->HasUnitState(UNIT_STATE_FLEEING | UNIT_STATE_CONFUSED)) ? 1 : 0);
     SendDirectMessage(&data);
 
     // We want to set the packet only
@@ -13593,12 +13624,21 @@ uint32 Player::GetBarberShopCost(uint8 newhairstyle, uint8 newhaircolor, uint8 n
     return uint32(cost);
 }
 
+// Archipelago WoW Randomizer weak hook point (M4.9) -- same shape/rationale
+// as BankHandler.cpp's ArchipelagoShouldSuppressBankAccess (see that file's
+// comment). Takes the GlyphSlot.dbc row's own 1-based Order value (the same
+// value InitGlyphsForLevel already resolves each SetGlyphSlot call from
+// below) so the module can compare it against its own granted "glyph_slots"
+// flag tier without core needing to know anything about that flag itself.
+bool (*ArchipelagoShouldSuppressGlyphSlot)(uint32 order, Player* player) = nullptr;
+
 void Player::InitGlyphsForLevel()
 {
     for (uint32 i = 0; i < sGlyphSlotStore.GetNumRows(); ++i)
         if (GlyphSlotEntry const* gs = sGlyphSlotStore.LookupEntry(i))
             if (gs->Order)
-                SetGlyphSlot(gs->Order - 1, gs->Id);
+                if (!ArchipelagoShouldSuppressGlyphSlot || !ArchipelagoShouldSuppressGlyphSlot(gs->Order, this))
+                    SetGlyphSlot(gs->Order - 1, gs->Id);
 
     uint8 level = GetLevel();
     uint32 value = 0;

@@ -16,12 +16,25 @@
  */
 
 #include "BankPackets.h"
+#include "Chat.h"
 #include "DBCStores.h"
 #include "Item.h"
 #include "Log.h"
 #include "Player.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+
+// Archipelago WoW Randomizer weak hook point (M4.9). Optional module --
+// modules/archipelago_wow/src/APGating.cpp sets this at script-load time
+// (AddArchipelagoGatingScripts()) if the module is present, leaves it
+// nullptr otherwise. Declared directly here, not via any module #include,
+// so this core file's only extra compile-time surface is this one bare
+// function-pointer symbol -- worldserver still builds cleanly with
+// -DDISABLED_AC_MODULES="archipelago_wow" (this project's existing
+// "module absent = full vanilla behavior" contract, extended for the
+// first time to a hook living in core src rather than entirely inside
+// the module -- see the M4.9 plan's Global Constraints).
+bool (*ArchipelagoShouldSuppressBankAccess)(Player* player) = nullptr;
 
 bool WorldSession::CanUseBank(ObjectGuid bankerGUID) const
 {
@@ -185,6 +198,18 @@ void WorldSession::HandleBuyBankSlotOpcode(WorldPackets::Bank::BuyBankSlot& buyB
 
 void WorldSession::SendShowBank(ObjectGuid guid)
 {
+    // Archipelago WoW Randomizer (M4.9.5 final review fix): this is the true
+    // single choke point all three real SendShowBank callers funnel through
+    // (HandleBankerActivateOpcode below, PlayerGossip.cpp's gossip-menu bank
+    // option, and pet_generic.cpp's stable-master bank option), so the bank
+    // access suppression guard lives here rather than duplicated in each
+    // caller.
+    if (ArchipelagoShouldSuppressBankAccess && ArchipelagoShouldSuppressBankAccess(GetPlayer()))
+    {
+        ChatHandler(this).PSendSysMessage("Archipelago: You need Bank Access to use this.");
+        return;
+    }
+
     m_currentBankerGUID = guid;
     WorldPackets::Bank::ShowBank packet;
     packet.Banker = guid;
