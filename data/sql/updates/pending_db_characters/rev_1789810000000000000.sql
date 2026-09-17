@@ -4,6 +4,12 @@
 -- One row per query attempt, regardless of whether it was granted, recording
 -- the account, character, query type (REQ_LOGIC/REQ_STUCK), query target
 -- (e.g. location_id), and whether the query was granted or denied.
+-- Append-only audit trail (no DELETE FROM WHERE 1=1 boilerplate here,
+-- unlike this file's earlier single-row/set-membership tables) --
+-- matches archipelago_hints/archipelago_items_received's own precedent
+-- (the two most recent durable accumulating-history tables in this same
+-- directory), since wiping accumulated audit rows on a manual re-apply
+-- would defeat the whole point of an accountability log.
 CREATE TABLE IF NOT EXISTS `archipelago_admin_queries` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `account_id` INT UNSIGNED NOT NULL,
@@ -16,4 +22,3 @@ CREATE TABLE IF NOT EXISTS `archipelago_admin_queries` (
   KEY `idx_account_id` (`account_id`),
   KEY `idx_queried_at` (`queried_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Archipelago WoW module: admin query audit trail (REQ_LOGIC, REQ_STUCK) from spoiler & logic viewer addon (M6.2.7)';
-DELETE FROM `archipelago_admin_queries` WHERE 1=1;
