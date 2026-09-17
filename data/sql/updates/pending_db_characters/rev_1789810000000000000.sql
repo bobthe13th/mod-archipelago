@@ -1,9 +1,13 @@
 -- M6.2.7: Add archipelago_admin_queries table for recording when admins query
 -- REQ_LOGIC and REQ_STUCK via the spoiler & logic viewer addon (see
 -- ArchipelagoRealmState::RecordAdminQuery, Task 4's real committed C++ implementation).
--- One row per query attempt, regardless of whether it was granted, recording
--- the account, character, query type (REQ_LOGIC/REQ_STUCK), query target
--- (e.g. location_id), and whether the query was granted or denied.
+-- One row per query attempt that was not cooldown-suppressed (a real
+-- per-player 5000ms cooldown, added after this table's own introduction,
+-- gates this write -- see ArchipelagoRealmState::RecordAdminQuery's own
+-- call sites in APAdminQueriesBroadcast.cpp), regardless of whether the
+-- (non-suppressed) query was granted, recording the account, character,
+-- query type (REQ_LOGIC/REQ_STUCK), query target (e.g. location_id), and
+-- whether the query was granted or denied.
 -- Append-only audit trail (no DELETE FROM WHERE 1=1 boilerplate here,
 -- unlike this file's earlier single-row/set-membership tables) --
 -- matches archipelago_hints/archipelago_items_received's own precedent
